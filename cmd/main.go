@@ -17,11 +17,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	updates, err := bot.GetUpdatesChan(uc)
-	if err != nil {
-		log.Infof("getUpdatesChan got with config:%v got err:%s", uc, err.Error())
-	}
 	go func() {
+		updates, err := bot.GetUpdatesChan(uc)
+		if err != nil {
+			log.Infof("getUpdatesChan got with config:%v got err:%s", uc, err.Error())
+		}
 		for update := range updates {
 			if update.Message == nil {
 				continue
@@ -41,7 +41,7 @@ func main() {
 	}()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-	httpsrv := localhttp.NewServer(":8080")
+	httpsrv := localhttp.NewServer(":8090")
 	go func() {
 		<-interrupt
 		log.Info("graceful server")
@@ -50,7 +50,7 @@ func main() {
 			return
 		}
 	}()
-	log.Info("starting http server on :8080")
+	log.Info("starting http server on :8090")
 	err = httpsrv.ListenAndServe()
 	if err != http.ErrServerClosed {
 		log.Fatal(err)
