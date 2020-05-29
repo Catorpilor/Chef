@@ -4,22 +4,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/prometheus/common/log"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func New(token string) (*tb.Bot, error) {
-	bot, err := tb.NewBot(tb.Settings{
-		Token:  token,
-		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
-		Client: &http.Client{Timeout: 10 * time.Second},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	bot.Handle("/add", func(m *tb.Message) {
-		log.Infof("get message with content: %#v", m)
-		bot.Send(m.Sender, "Got your message")
-	})
-	return bot, nil
+func New(token string, enableDebug bool) (*tb.BotAPI, tb.UpdateConfig, error) {
+	bot, err := tb.NewBotAPIWithClient(token, &http.Client{Timeout: 5 * time.Second})
+	bot.Debug = enableDebug
+	u := tb.NewUpdate(0)
+	u.Timeout = 60
+	return bot, u, err
 }
