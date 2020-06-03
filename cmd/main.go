@@ -5,18 +5,24 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 
 	localhttp "github.com/catorpilor/idenaMgrBot/http"
+	"github.com/catorpilor/idenaMgrBot/idena"
+	"github.com/catorpilor/idenaMgrBot/pkg/guard"
 	"github.com/catorpilor/idenaMgrBot/telegram"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	bot, uc, err := telegram.New(`1059453367:AAGdpYFGxw5mAYOTjRIr9_i-ZI_vY4BOcOU`, true)
+	bot, uc, err := telegram.New(`1057482486:AAH2r2OqGsu9yrkKOEcQ2j1RXl6AWeceIas`, false)
 	if err != nil {
 		log.Fatal(err)
 	}
+	lc := idena.NewCtl(nil)
+	watcher := guard.New(bot, lc)
+	go watcher.Start()
 	go func() {
 		updates, err := bot.GetUpdatesChan(uc)
 		if err != nil {
@@ -33,9 +39,25 @@ func main() {
 				case "help":
 					msg.Text = "some help messages"
 				case "add":
-					msg.Text = "Success"
+					log.Infof("message context: %s", update.Message.CommandArguments())
+					rawargs := update.Message.CommandArguments()
+					args := strings.Fields(rawargs)
+					if len(args) > 1 || len(args) < 1 {
+						msg.Text = "invalid argumenets, wanted one"
+						break
+					}
+					if !lc.ValidateAddress(args[0]) {
+						msg.Text = "invalid idena address"
+					} else {
+						watcher.Add(args[0], update.Message.Chat.ID)
+						msg.Text = "successly added address to the watch list"
+					}
 				}
-				bot.Send(msg)
+				msg.ReplyToMessageID = update.Message.MessageID
+				_, err := bot.Send(msg)
+				if err != nil {
+					log.Infof("send message:%v got err:%s", msg, err.Error())
+				}
 			}
 		}
 	}()

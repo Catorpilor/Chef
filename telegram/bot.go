@@ -8,6 +8,6 @@ func New(token string, enableDebug bool) (*tb.BotAPI, tb.UpdateConfig, error) {
 	bot, err := tb.NewBotAPI(token)
 	bot.Debug = enableDebug
 	u := tb.NewUpdate(0)
-	u.Timeout = 5
+	u.Timeout = 15
 	return bot, u, err
 }
