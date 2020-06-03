@@ -1,4 +1,4 @@
-FROM golang:1.13.4-alpine3.9 AS builder
+FROM golang:1.14-alpine3.12 AS builder
 ARG PKG_NAME=github.com/catorpilor/idenaMgrBot
 
 WORKDIR /go/src/${PKG_NAME}
