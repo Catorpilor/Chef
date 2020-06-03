@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 
 	localhttp "github.com/catorpilor/idenaMgrBot/http"
 	"github.com/catorpilor/idenaMgrBot/telegram"
@@ -13,7 +14,7 @@ import (
 )
 
 func main() {
-	bot, uc, err := telegram.New(`1059453367:AAGdpYFGxw5mAYOTjRIr9_i-ZI_vY4BOcOU`, true)
+	bot, uc, err := telegram.New(`1057482486:AAH2r2OqGsu9yrkKOEcQ2j1RXl6AWeceIas`, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -33,6 +34,15 @@ func main() {
 				case "help":
 					msg.Text = "some help messages"
 				case "add":
+					log.Infof("message context: %s", update.Message.CommandArguments())
+					rawargs := update.Message.CommandArguments()
+					args := strings.Fields(rawargs)
+					if len(args) > 1 || len(args) < 1 {
+						msg.Text = "invalid argumenets, wanted one"
+						break
+					}
+					// check if it's a valid idena address
+
 					msg.Text = "Success"
 				}
 				bot.Send(msg)
