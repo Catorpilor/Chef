@@ -46,8 +46,8 @@ func main() {
 			if update.Message.IsCommand() {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 				switch update.Message.Command() {
-				case "help":
-					msg.Text = "some help messages"
+				case "status", "last":
+					msg.Text = "not avaliable yet."
 				case "add":
 					log.Infof("message context: %s", update.Message.CommandArguments())
 					rawargs := update.Message.CommandArguments()
@@ -60,10 +60,9 @@ func main() {
 						msg.Text = "invalid idena address"
 					} else {
 						watcher.Add(args[0], update.Message.Chat.ID)
-						msg.Text = "successly added address to the watch list"
+						msg.Text = "add the address to the watch list."
 					}
 				}
-				msg.ReplyToMessageID = update.Message.MessageID
 				_, err := bot.Send(msg)
 				if err != nil {
 					log.Infof("send message:%v got err:%s", msg, err.Error())
