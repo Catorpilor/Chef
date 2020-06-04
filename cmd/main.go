@@ -10,6 +10,7 @@ import (
 	localhttp "github.com/catorpilor/idenaMgrBot/http"
 	"github.com/catorpilor/idenaMgrBot/idena"
 	"github.com/catorpilor/idenaMgrBot/pkg/guard"
+	"github.com/catorpilor/idenaMgrBot/redis"
 	"github.com/catorpilor/idenaMgrBot/telegram"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	log "github.com/sirupsen/logrus"
@@ -21,6 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 	lc := idena.NewCtl(nil)
+	rc := redis.NewPool("localhost:6379", 3)
 	watcher := guard.New(bot, lc)
 	go watcher.Start()
 	go func() {
