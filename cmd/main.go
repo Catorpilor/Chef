@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 
+	"github.com/catorpilor/idenaMgrBot"
 	localhttp "github.com/catorpilor/idenaMgrBot/http"
 	"github.com/catorpilor/idenaMgrBot/idena"
 	"github.com/catorpilor/idenaMgrBot/pkg/guard"
@@ -17,12 +19,18 @@ import (
 )
 
 func main() {
-	bot, uc, err := telegram.New(`1057482486:AAH2r2OqGsu9yrkKOEcQ2j1RXl6AWeceIas`, false)
+	f := flag.String("toml", "idena.toml", "bot's configuration")
+	var err error
+	var conf idenaMgrBot.Config
+	if err = idenaMgrBot.Load(*f, &conf); err != nil {
+		log.Fatalf("load %s got err:%s", *f, err.Error())
+	}
+	bot, uc, err := telegram.New(conf.Telegram.Token, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 	lc := idena.NewCtl(nil)
-	rc := redis.NewPool("localhost:6379", 3)
+	rc := redis.NewPool(conf.Redis.Addr, conf.Redis.MaxIdle)
 	watcher := guard.New(bot, lc, rc)
 	go watcher.Start()
 	go func() {
@@ -65,7 +73,7 @@ func main() {
 	}()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-	httpsrv := localhttp.NewServer(":8090")
+	httpsrv := localhttp.NewServer(conf.Server.Addr)
 	go func() {
 		<-interrupt
 		log.Info("graceful server")
@@ -74,7 +82,7 @@ func main() {
 			return
 		}
 	}()
-	log.Info("starting http server on :8090")
+	log.Infof("starting http server on %s", conf.Server.Addr)
 	err = httpsrv.ListenAndServe()
 	if err != http.ErrServerClosed {
 		log.Fatal(err)
