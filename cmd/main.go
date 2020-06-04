@@ -23,7 +23,7 @@ func main() {
 	}
 	lc := idena.NewCtl(nil)
 	rc := redis.NewPool("localhost:6379", 3)
-	watcher := guard.New(bot, lc)
+	watcher := guard.New(bot, lc, rc)
 	go watcher.Start()
 	go func() {
 		updates, err := bot.GetUpdatesChan(uc)

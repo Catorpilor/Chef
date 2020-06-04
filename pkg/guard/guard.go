@@ -1,6 +1,7 @@
 package guard
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 const (
 	defaultInterval = 15 * time.Minute
+	prefixLen       = 11 // idena:addr: length
 )
 
 type Guardian struct {
@@ -24,20 +26,49 @@ type Guardian struct {
 }
 
 func New(bot *tgbotapi.BotAPI, ctl *idena.Client, redisCtl *redis.Pool) *Guardian {
-	return &Guardian{
+	guard := &Guardian{
 		bot:      bot,
 		watched:  make(map[string]int64),
 		ticker:   time.NewTicker(defaultInterval),
 		idenaCtl: ctl,
 		redisCtl: redisCtl,
 	}
+	guard.update()
+	return guard
 }
 
 func (guard *Guardian) update() {
-	// use scan
 	c := guard.redisCtl.Get()
 	defer c.Close()
 	count, err := redis.Int(c.Do("GET", "idena:count"))
+	if err != nil {
+		if errors.Is(err, redis.ErrNil) {
+			return
+		}
+		log.Infof("get key:idena:count from redis got err:%s", err.Error())
+		return
+	}
+	if count < 1 {
+		return
+	}
+	keys, err := redis.Strings(c.Do("KEYS", "idena:addr:*"))
+	if err != nil {
+		log.Infof("get keys idena:addr:* failed with err:%s", err.Error())
+		return
+	}
+	_ = c.Send("MULTI")
+	for _, key := range keys {
+		_ = c.Send("GET", key)
+	}
+	vals, err := redis.Int64s(c.Do("EXEC"))
+	if err != nil {
+		log.Infof("exec get vals from keys:%v failed %s", keys, err.Error())
+		return
+	}
+	for i := range keys {
+		guard.watched[keys[i][prefixLen:]] = vals[i]
+	}
+	log.Infof("udpate watched list:%v", guard.watched)
 }
 
 func (guard *Guardian) isWatched(addr string) bool {
