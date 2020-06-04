@@ -23,12 +23,6 @@ jobs:
           go test -short -coverprofile cover.out -covermode=atomic $(go list github.com/catorpilor/idenaMgrBot/... | grep -v /vendor/)
           cat cover.out >> coverage.txt
 
-      - name: Upload Coverage report to CodeCov
-        uses: codecov/codecov-action@v1.0.0
-        with:
-          token: ${{secrets.CODECOV_TOKEN}}
-          file: ./coverage.txt
-
   build:
     name: Build
     runs-on: ubuntu-latest 
