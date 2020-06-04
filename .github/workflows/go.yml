@@ -20,7 +20,7 @@ jobs:
 
       - name: Run Unit tests.
         run: |
-          go test -short -coverprofile cover.out -covermode=atomic $(go list github.com/catorpilor/nezha/... | grep -v /vendor/)
+          go test -short -coverprofile cover.out -covermode=atomic $(go list github.com/catorpilor/idenaMgrBot/... | grep -v /vendor/)
           cat cover.out >> coverage.txt
 
       - name: Upload Coverage report to CodeCov
@@ -31,7 +31,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest 
     steps:
 
     - name: Set up Go 1.14
