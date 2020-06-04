@@ -3,6 +3,7 @@ module github.com/catorpilor/idenaMgrBot
 go 1.14
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/gorilla/mux v1.7.4

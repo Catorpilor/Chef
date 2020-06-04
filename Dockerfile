@@ -8,6 +8,7 @@ RUN CGO_ENABLED=0 go build -mod vendor -o /mgr
 
 FROM cheshire42/alpine:3.9
 COPY --from=builder /mgr /mgr
+COPY --from=builder /go/src/github.com/catorpilor/idenaMgrBot/cmd/idena.toml /idena.toml
 
 EXPOSE 8090
 ENTRYPOINT ["/mgr"]

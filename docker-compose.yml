@@ -16,11 +16,11 @@ services:
     networks:
     - dockernet
 
-  nezha:
+  idena:
     restart: always
     image: cheshire42/idenamgr:v0.2.0
-    # volumes:
-    # - ./agg.toml:/agg.toml
+    volumes:
+    - ./idena.toml:/idena.toml
     depends_on:
     - redis
     ports:

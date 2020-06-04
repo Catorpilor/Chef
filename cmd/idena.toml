@@ -1,0 +1,9 @@
+[server]
+addr=":8080"
+
+[redis]
+addr="localhost:6379"
+maxIdle=3
+
+[telegram]
+token="yourtokenhere"
