@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  redis:
+    restart: always
+    image: redis:5.0.5-alpine
+    command:
+    - /usr/local/etc/redis/redis.conf
+    - --loglevel warning
+    sysctls:
+    - net.core.somaxconn=511
+    volumes:
+    - ./redis.conf:/usr/local/etc/redis/redis.conf
+    - /data/idenamgr/redis:/data #change to your own data dir
+    - /etc/localtime:/etc/localtime:ro
+    networks:
+    - dockernet
+
+  nezha:
+    restart: always
+    image: cheshire42/idenamgr:v0.2.0
+    # volumes:
+    # - ./agg.toml:/agg.toml
+    depends_on:
+    - redis
+    ports:
+    - "8090:8090"
+    networks:
+    - dockernet
+
+  redis_exporter:
+    restart: always
+    image: oliver006/redis_exporter
+    depends_on:
+    - redis
+    environment:
+    - REDIS_ADDR=redis:6379
+    - REDIS_ALIAS=idenamgr_redis
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    ports:
+    - "9121:9121"
+    networks:
+    - dockernet
+
+networks:
+  dockernet:
+    driver: bridge
