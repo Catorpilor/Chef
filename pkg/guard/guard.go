@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/catorpilor/idenaMgrBot/idena"
@@ -18,20 +19,23 @@ const (
 )
 
 type Guardian struct {
-	bot      *tgbotapi.BotAPI
-	watched  map[string]int64
-	ticker   *time.Ticker
-	idenaCtl *idena.Client
-	redisCtl *redis.Pool
+	bot          *tgbotapi.BotAPI
+	watched      map[string]int64
+	lastActivity map[string]int64
+	ticker       *time.Ticker
+	idenaCtl     *idena.Client
+	redisCtl     *redis.Pool
+	lock         sync.RWMutex
 }
 
 func New(bot *tgbotapi.BotAPI, ctl *idena.Client, redisCtl *redis.Pool) *Guardian {
 	guard := &Guardian{
-		bot:      bot,
-		watched:  make(map[string]int64),
-		ticker:   time.NewTicker(defaultInterval),
-		idenaCtl: ctl,
-		redisCtl: redisCtl,
+		bot:          bot,
+		watched:      make(map[string]int64),
+		lastActivity: make(map[string]int64),
+		ticker:       time.NewTicker(defaultInterval),
+		idenaCtl:     ctl,
+		redisCtl:     redisCtl,
 	}
 	guard.update()
 	return guard
@@ -65,13 +69,17 @@ func (guard *Guardian) update() {
 		log.Infof("exec get vals from keys:%v failed %s", keys, err.Error())
 		return
 	}
+	guard.lock.Lock()
 	for i := range keys {
 		guard.watched[keys[i][prefixLen:]] = vals[i]
 	}
+	guard.lock.Unlock()
 	log.Infof("udpate watched list:%v", guard.watched)
 }
 
 func (guard *Guardian) isWatched(addr string) bool {
+	guard.lock.RLock()
+	defer guard.lock.RUnlock()
 	if _, exists := guard.watched[addr]; exists {
 		return true
 	}
@@ -91,8 +99,9 @@ func (guard *Guardian) Add(addr string, chatID int64) {
 		log.Infof("persist addr:%s and chatID:%d got err:%s", addr, chatID, err.Error())
 		// TODO(@catorpilor): add retry logic here.
 	}
-
+	guard.lock.Lock()
 	guard.watched[addr] = chatID
+	guard.lock.Unlock()
 }
 
 func (guard *Guardian) Start() {
@@ -102,15 +111,23 @@ func (guard *Guardian) Start() {
 			case <-guard.ticker.C:
 				for addr, chatID := range guard.watched {
 					go func(addr string, chatID int64) {
+						offLine := false
 						os := guard.idenaCtl.CheckOnlineIdentity(addr)
+						if os == nil {
+							log.Info("calling check status got nil")
+							return
+						}
 						log.Infof("calling addr:%s got %v", addr, os)
-						if os != nil && !os.Online {
-							//
+						if v, exists := guard.lastActivity[addr]; exists {
+							offLine = (v == os.LastTime)
+						}
+						if offLine || !os.Online { //
 							msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("addr:%s is offline and lastActivity is %s",
 								addr, os.LastActivity))
 							// send message
 							_, _ = guard.bot.Send(msg)
 						}
+						guard.lastActivity[addr] = os.LastTime
 					}(addr, chatID)
 				}
 			}

@@ -77,6 +77,7 @@ func (c *Client) callWithURL(url string) (*Resp, error) {
 
 type OnlineStatus struct {
 	LastActivity string `json:"lastActivity,omitempty"`
+	LastTime     int64  `json:"-"`
 	Penalty      string `json:"penalty,omitempty"`
 	Online       bool   `json:"online,omitempty"`
 }
@@ -85,6 +86,25 @@ func (os *OnlineStatus) ConstructFromResp(resp SuccessResp) {
 	os.LastActivity = resp.LastActivity
 	os.Penalty = resp.Penalty
 	os.Online = resp.Online
+	ux, err := parseTime(resp.LastActivity)
+	if err != nil {
+		log.Infof("parseTime with arg:%s got err:%s", resp.LastActivity, err.Error())
+		return
+	}
+	os.LastTime = ux
+}
+
+var (
+	secondsEastOfUTC = int((8 * time.Hour).Seconds())
+	beijing          = time.FixedZone("Beijing Time", secondsEastOfUTC)
+)
+
+func parseTime(ts string) (int64, error) {
+	t, err := time.ParseInLocation(time.RFC3339Nano, ts, beijing)
+	if err != nil {
+		return -1, err
+	}
+	return t.Unix(), nil
 }
 
 func (c *Client) ValidateAddress(addr string) bool {
