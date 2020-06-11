@@ -1,9 +1,10 @@
 [server]
-addr=":8080"
+addr=":8090"
 
 [redis]
 addr="localhost:6379"
 maxIdle=3
 
 [telegram]
-token="yourtokenhere"
+token="yourtoken"
+timeout = 30

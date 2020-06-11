@@ -17,7 +17,8 @@ type Config struct {
 		MaxIdle int    `toml:"maxIdle"`
 	}
 	Telegram struct {
-		Token string `toml:"token"`
+		Token   string `toml:"token"`
+		Timeout int    `toml:"timeout"`
 	}
 }
 

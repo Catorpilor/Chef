@@ -18,6 +18,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	defaultOffset = 0
+)
+
 func main() {
 	f := flag.String("toml", "idena.toml", "bot's configuration")
 	var err error
@@ -25,10 +29,11 @@ func main() {
 	if err = idenaMgrBot.Load(*f, &conf); err != nil {
 		log.Fatalf("load %s got err:%s", *f, err.Error())
 	}
-	bot, uc, err := telegram.New(conf.Telegram.Token, false)
+	bot, err := telegram.New(conf.Telegram.Token, false)
 	if err != nil {
 		log.Fatal(err)
 	}
+	uc := telegram.UpdateConfig(defaultOffset, conf.Telegram.Timeout)
 	lc := idena.NewCtl(nil)
 	rc := redis.NewPool(conf.Redis.Addr, conf.Redis.MaxIdle)
 	watcher := guard.New(bot, lc, rc)
