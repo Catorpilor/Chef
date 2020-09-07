@@ -1,0 +1,14 @@
+[server]
+addr=":8090"
+
+[redis]
+addr="localhost:6379"
+maxIdle=3
+
+[telegram]
+token="telegram bot api"
+timeout = 20
+
+[etherscan]
+key="your etherscan api token"
+interval=20

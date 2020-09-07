@@ -1,4 +1,4 @@
-package idenaMgrBot
+package ethChef
 
 import (
 	"bytes"
@@ -19,6 +19,10 @@ type Config struct {
 	Telegram struct {
 		Token   string `toml:"token"`
 		Timeout int    `toml:"timeout"`
+	}
+	Etherscan struct {
+		Key      string `toml:"key"`
+		Interval int    `toml:"interval"`
 	}
 }
 

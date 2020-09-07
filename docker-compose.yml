@@ -18,9 +18,9 @@ services:
 
   idena:
     restart: always
-    image: cheshire42/idenamgr:v0.2.0
+    image: cheshire42/chef:v0.1.0
     volumes:
-    - ./idena.toml:/idena.toml
+    - ./ethchef.toml:/ethchef.toml
     depends_on:
     - redis
     ports:
