@@ -185,6 +185,10 @@ func constructWithTx(txs []ethscan.Tx, addr string) string {
 		}
 		td, _ := strconv.Atoi(tx.TokenDecimal)
 		na := len(tx.Value) - td
+		if na < 0 {
+			log.Infof("token: %s with decimal:%s value: %s is wrong.", tx.TokenName, tx.TokenDecimal, tx.Value)
+			na = len(tx.Value)
+		}
 		sb.WriteString(fmt.Sprintf(content, tx.Action, tx.TokenSymbol, tx.Value[:na], tx.Hash))
 		if i < n-1 {
 			sb.WriteByte('\n')
