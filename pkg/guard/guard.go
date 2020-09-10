@@ -23,7 +23,7 @@ const (
 type Guardian struct {
 	bot          *tgbotapi.BotAPI
 	watched      map[string]int64
-	lastActivity map[string]string
+	lastActivity map[string]int64
 	ticker       *time.Ticker
 	ethCtl       *ethscan.Client
 	redisCtl     *redis.Pool
@@ -34,7 +34,7 @@ func New(bot *tgbotapi.BotAPI, ctl *ethscan.Client, redisCtl *redis.Pool, interv
 	guard := &Guardian{
 		bot:          bot,
 		watched:      make(map[string]int64),
-		lastActivity: make(map[string]string),
+		lastActivity: make(map[string]int64),
 		ticker:       time.NewTicker(time.Duration(interval) * time.Second),
 		ethCtl:       ctl,
 		redisCtl:     redisCtl,
@@ -88,7 +88,12 @@ func (guard *Guardian) update() {
 		guard.watched[keys[i][prefixLen:]] = vals[i]
 	}
 	for i := range activityKeys {
-		guard.lastActivity[keys[i][13:]] = activities[i]
+		bn, err := strconv.ParseInt(activities[i], 10, 64)
+		if err != nil {
+			log.Infof("parseInt with arg: %s got err:%v", activities[i], err)
+			bn = 0
+		}
+		guard.lastActivity[keys[i][13:]] = bn
 	}
 	guard.lock.Unlock()
 	log.Infof("udpate watched list:%v, and activityList:%v", guard.watched, guard.lastActivity)
@@ -130,21 +135,30 @@ func (guard *Guardian) Start() {
 					go func(addr string, chatID int64) {
 						c := guard.redisCtl.Get()
 						defer c.Close()
-						rp, err := guard.ethCtl.QueryTokenTxWithValues(addr, guard.lastActivity[addr])
+						var startBlock string
+						if guard.lastActivity[addr] != 0 {
+							startBlock = strconv.FormatInt(guard.lastActivity[addr], 10)
+						}
+						rp, err := guard.ethCtl.QueryTokenTxWithValues(addr, startBlock)
 						if err != nil {
-							log.Infof("querying addr: %s with lastSeen:%s got err:%s", addr, guard.lastActivity[addr], err)
+							log.Infof("querying addr: %s with lastSeen:%s got err:%s", addr, startBlock, err)
 							return
 						}
 						log.Infof("got reply message:%s and status:%s", rp.Message, rp.Status)
 						if rp.Message == "OK" {
 							if len(rp.Result) > 0 {
-								guard.lastActivity[addr] = rp.Result[0].BlockNumber
+								bn, err := strconv.ParseInt(rp.Result[0].BlockNumber, 10, 64)
+								if err != nil {
+									log.Infof("parse %s to int got err: %v", rp.Result[0].BlockNumber, err)
+									bn = -1
+								}
+								guard.lastActivity[addr] = bn + 1
 								if _, err := c.Do("SET", fmt.Sprintf("lastActivity:%s", addr), rp.Result[0].BlockNumber); err != nil {
 									log.Infof("set lastActivity:%s got err:%v", addr, err)
 								}
 								msg := tgbotapi.NewMessage(chatID, constructWithTx(rp.Result, addr))
 								msg.ParseMode = tgbotapi.ModeMarkdown
-								_, err := guard.bot.Send(msg)
+								_, err = guard.bot.Send(msg)
 								if err != nil {
 									log.Infof("send message: %v got  err:%v", msg, err)
 									return
