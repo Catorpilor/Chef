@@ -138,8 +138,8 @@ func (guard *Guardian) Start() {
 						log.Infof("got reply message:%s and status:%s", rp.Message, rp.Status)
 						if rp.Message == "OK" {
 							if len(rp.Result) > 0 {
-								guard.lastActivity[addr] = rp.Result[0].TimeStamp
-								if _, err := c.Do("SET", fmt.Sprintf("lastActivity:%s", addr), rp.Result[0].TimeStamp); err != nil {
+								guard.lastActivity[addr] = rp.Result[0].BlockNumber
+								if _, err := c.Do("SET", fmt.Sprintf("lastActivity:%s", addr), rp.Result[0].BlockNumber); err != nil {
 									log.Infof("set lastActivity:%s got err:%v", addr, err)
 								}
 								msg := tgbotapi.NewMessage(chatID, constructWithTx(rp.Result, addr))
