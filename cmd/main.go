@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -54,7 +55,7 @@ func main() {
 				case "status", "last":
 					msg.Text = "not avaliable yet."
 				case "add":
-					log.Infof("message context: %s", update.Message.CommandArguments())
+					log.Infof("add comand message context: %s", update.Message.CommandArguments())
 					rawargs := update.Message.CommandArguments()
 					args := strings.Fields(rawargs)
 					if len(args) > 1 || len(args) < 1 {
@@ -63,6 +64,18 @@ func main() {
 					}
 					watcher.Add(args[0], update.Message.Chat.ID)
 					msg.Text = "add address to the watch list."
+				case "delete":
+					// this is ugly
+					// TODO()
+					log.Infof("delete command message context: %s", update.Message.CommandArguments())
+					rawargs := update.Message.CommandArguments()
+					args := strings.Fields(rawargs)
+					if len(args) != 1 {
+						msg.Text = "invalid arguments, only allowed one"
+						break
+					}
+					watcher.Delete(args[0])
+					msg.Text = fmt.Sprintf("delete %s from the watch list", args[0])
 				}
 				_, err := bot.Send(msg)
 				if err != nil {

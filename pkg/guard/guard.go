@@ -126,6 +126,25 @@ func (guard *Guardian) Add(addr string, chatID int64) {
 	guard.lock.Unlock()
 }
 
+func (guard *Guardian) Delete(addr string) {
+	if !guard.isWatched(addr) {
+		return
+	}
+	guard.lock.Lock()
+	delete(guard.watched, addr)
+	delete(guard.lastActivity, addr)
+	guard.lock.Unlock()
+	c := guard.redisCtl.Get()
+	defer c.Close()
+	_ = c.Send("MULTI")
+	_ = c.Send("DECR", "idena:count")
+	_ = c.Send("DEL", fmt.Sprintf("ether:addr:%s", addr))
+	_ = c.Send("DEL", fmt.Sprintf("lastActivity:%s", addr))
+	if _, err := c.Do("EXEC"); err != nil {
+		log.Infof("delete addr:%s in redis got err:%v", addr, err)
+	}
+}
+
 func (guard *Guardian) Start() {
 	go func() {
 		for {
