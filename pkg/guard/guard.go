@@ -20,10 +20,15 @@ const (
 	prefixLen       = 11 // idena:addr: length
 )
 
+var (
+	unknownAddrErr = errors.New("unknown address, please call /add first.")
+)
+
 type Guardian struct {
 	bot          *tgbotapi.BotAPI
 	watched      map[string]int64
 	lastActivity map[string]int64
+	alias        map[string]string
 	ticker       *time.Ticker
 	ethCtl       *ethscan.Client
 	redisCtl     *redis.Pool
@@ -35,6 +40,7 @@ func New(bot *tgbotapi.BotAPI, ctl *ethscan.Client, redisCtl *redis.Pool, interv
 		bot:          bot,
 		watched:      make(map[string]int64),
 		lastActivity: make(map[string]int64),
+		alias:        make(map[string]string),
 		ticker:       time.NewTicker(time.Duration(interval) * time.Second),
 		ethCtl:       ctl,
 		redisCtl:     redisCtl,
@@ -83,9 +89,19 @@ func (guard *Guardian) update() {
 	if err != nil {
 		log.Infof("multi/exec activityKeys:%v got err:%v", activityKeys, err)
 	}
+	// get alias back
+	_ = c.Send("MULTI")
+	for _, key := range keys {
+		_ = c.Send("GET", fmt.Sprintf("addr:%s:alias", key[prefixLen:]))
+	}
+	alias, err := redis.Strings(c.Do("EXEC"))
+	if err != nil {
+		log.Infof("multi/exec alias got err: %v", err)
+	}
 	guard.lock.Lock()
 	for i := range keys {
 		guard.watched[keys[i][prefixLen:]] = vals[i]
+		guard.alias[keys[i][prefixLen:]] = alias[i]
 	}
 	for i := range activityKeys {
 		bn, err := strconv.ParseInt(activities[i], 10, 64)
@@ -99,6 +115,19 @@ func (guard *Guardian) update() {
 	log.Infof("udpate watched list:%v, and activityList:%v", guard.watched, guard.lastActivity)
 }
 
+func (guard *Guardian) Set(addr, alia string) error {
+	if !guard.isWatched(addr) {
+		return unknownAddrErr
+	}
+	guard.lock.Lock()
+	defer guard.lock.Unlock()
+	guard.alias[addr] = alia
+	c := guard.redisCtl.Get()
+	defer c.Close()
+	_, err := c.Do("SET", fmt.Sprintf("addr:%s:alias", addr), alia)
+	return err
+}
+
 func (guard *Guardian) isWatched(addr string) bool {
 	guard.lock.RLock()
 	defer guard.lock.RUnlock()
@@ -108,7 +137,7 @@ func (guard *Guardian) isWatched(addr string) bool {
 	return false
 }
 
-func (guard *Guardian) Add(addr string, chatID int64) {
+func (guard *Guardian) Add(addr string, chatID int64, alias string) {
 	if guard.isWatched(addr) {
 		return
 	}
@@ -117,12 +146,14 @@ func (guard *Guardian) Add(addr string, chatID int64) {
 	_ = c.Send("MULTI")
 	_ = c.Send("INCR", "idena:count")
 	_ = c.Send("SET", fmt.Sprintf("ether:addr:%s", addr), strconv.FormatInt(chatID, 10))
+	_ = c.Send("SET", fmt.Sprintf("addr:%s:alias", addr), alias)
 	if _, err := c.Do("EXEC"); err != nil {
 		log.Infof("persist addr:%s and chatID:%d got err:%s", addr, chatID, err.Error())
 		// TODO(@catorpilor): add retry logic here.
 	}
 	guard.lock.Lock()
 	guard.watched[addr] = chatID
+	guard.alias[addr] = alias
 	guard.lock.Unlock()
 }
 
@@ -175,7 +206,7 @@ func (guard *Guardian) Start() {
 								if _, err := c.Do("SET", fmt.Sprintf("lastActivity:%s", addr), rp.Result[0].BlockNumber); err != nil {
 									log.Infof("set lastActivity:%s got err:%v", addr, err)
 								}
-								msg := tgbotapi.NewMessage(chatID, constructWithTx(rp.Result, addr))
+								msg := tgbotapi.NewMessage(chatID, constructWithTx(rp.Result, addr, guard.alias[addr]))
 								msg.ParseMode = tgbotapi.ModeMarkdown
 								_, err = guard.bot.Send(msg)
 								if err != nil {
@@ -204,9 +235,9 @@ const (
 	content = `|%-2s  |%-2s  |%-2s  | [tx](https://etherscan.io/tx/%s) |`
 )
 
-func constructWithTx(txs []ethscan.Tx, addr string) string {
+func constructWithTx(txs []ethscan.Tx, addr, alias string) string {
 	var sb bytes.Buffer
-	sb.WriteString(fmt.Sprintf("Addr: %s lastest %d transactions:", addr, len(txs)))
+	sb.WriteString(fmt.Sprintf("Addr: %s(%s) lastest %d transactions:", alias, addr, len(txs)))
 	sb.WriteString("\n")
 	sb.WriteString(header)
 	n := len(txs)
