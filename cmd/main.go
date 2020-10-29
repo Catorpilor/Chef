@@ -54,15 +54,30 @@ func main() {
 				switch update.Message.Command() {
 				case "status", "last":
 					msg.Text = "not avaliable yet."
+				case "set":
+					log.Infof("set command message context: %s", update.Message.CommandArguments())
+					rawargs := update.Message.CommandArguments()
+					args := strings.Fields(rawargs)
+					if len(args) != 2 {
+						msg.Text = "invalid arguments wanted two."
+						break
+					}
+					if err := watcher.Set(args[0], args[1]); err != nil {
+						msg.Text = err.Error()
+					}
 				case "add":
 					log.Infof("add comand message context: %s", update.Message.CommandArguments())
 					rawargs := update.Message.CommandArguments()
 					args := strings.Fields(rawargs)
-					if len(args) > 1 || len(args) < 1 {
+					if len(args) < 1 || len(args) > 2 {
 						msg.Text = "invalid argumenets, wanted one"
 						break
 					}
-					watcher.Add(args[0], update.Message.Chat.ID)
+					alias := "default"
+					if len(args) > 1 {
+						alias = args[1]
+					}
+					watcher.Add(args[0], update.Message.Chat.ID, alias)
 					msg.Text = "add address to the watch list."
 				case "delete":
 					// this is ugly
@@ -76,6 +91,8 @@ func main() {
 					}
 					watcher.Delete(args[0])
 					msg.Text = fmt.Sprintf("delete %s from the watch list", args[0])
+				default:
+					msg.Text = "not supported"
 				}
 				_, err := bot.Send(msg)
 				if err != nil {
