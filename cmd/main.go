@@ -62,7 +62,9 @@ func main() {
 						msg.Text = "invalid arguments wanted two."
 						break
 					}
-
+					if err := watcher.Set(args[0], args[1]); err != nil {
+						msg.Text = err.Error()
+					}
 				case "add":
 					log.Infof("add comand message context: %s", update.Message.CommandArguments())
 					rawargs := update.Message.CommandArguments()
