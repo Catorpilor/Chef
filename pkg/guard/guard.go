@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -194,7 +195,7 @@ func (guard *Guardian) Start() {
 							log.Infof("querying addr: %s with lastSeen:%s got err:%s", addr, startBlock, err)
 							return
 						}
-						log.Infof("got reply message:%s and status:%s", rp.Message, rp.Status)
+						log.Infof("got reply message:%s and status:%s, number of txs: %d", rp.Message, rp.Status, len(rp.Result))
 						if rp.Message == "OK" {
 							if len(rp.Result) > 0 {
 								bn, err := strconv.ParseInt(rp.Result[0].BlockNumber, 10, 64)
@@ -236,8 +237,14 @@ const (
 )
 
 func constructWithTx(txs []ethscan.Tx, addr, alias string) string {
+	var hl string
+	tx := txs[0]
+	if tx.From == addr {
+		// create or selling
+		hl = strings.Repeat(":heart_decoration:", 5)
+	}
 	var sb bytes.Buffer
-	sb.WriteString(fmt.Sprintf("Addr: %s(%s) lastest %d transactions:", alias, addr, len(txs)))
+	sb.WriteString(fmt.Sprintf("%s addr: %s last (%d) txs:", hl, alias, len(txs)))
 	sb.WriteString("\n")
 	sb.WriteString(header)
 	n := len(txs)
