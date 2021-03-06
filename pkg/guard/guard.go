@@ -275,6 +275,7 @@ func (guard *Guardian) Start() {
 									}
 								}
 							}
+							time.Sleep(50 * time.Millisecond)
 						}
 					}(addr, chatIDs)
 				}
