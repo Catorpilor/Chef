@@ -243,25 +243,27 @@ func (guard *Guardian) Start() {
 					go func(addr string, chatIDs []int64) {
 						c := guard.redisCtl.Get()
 						defer c.Close()
-						for _, chatID := range chatIDs {
-							var startBlock string
-							lk := fmt.Sprintf("%d-%s", chatID, addr)
-							if guard.lastActivity[lk] != 0 {
-								startBlock = strconv.FormatInt(guard.lastActivity[lk], 10)
-							}
-							rp, err := guard.ethCtl.QueryTokenTxWithValues(addr, startBlock)
-							if err != nil {
-								log.Infof("querying addr: %s with lastSeen:%s got err:%s", addr, startBlock, err)
-								return
-							}
-							log.Infof("got reply message:%s and status:%s, number of txs: %d", rp.Message, rp.Status, len(rp.Result))
-							if rp.Message == "OK" {
-								if len(rp.Result) > 0 {
-									bn, err := strconv.ParseInt(rp.Result[0].BlockNumber, 10, 64)
-									if err != nil {
-										log.Infof("parse %s to int got err: %v", rp.Result[0].BlockNumber, err)
-										bn = -1
-									}
+						// no need to loop call, just pick the oldest block.
+						// afterall they all point to the same block.
+						var startBlock string
+						lk := fmt.Sprintf("%d-%s", chatIDs[0], addr)
+						if guard.lastActivity[lk] != 0 {
+							startBlock = strconv.FormatInt(guard.lastActivity[lk], 10)
+						}
+						rp, err := guard.ethCtl.QueryTokenTxWithValues(addr, startBlock)
+						if err != nil {
+							log.Infof("querying addr: %s with lastSeen:%s got err:%s", addr, startBlock, err)
+							return
+						}
+						log.Infof("got reply message:%s and status:%s, number of txs: %d", rp.Message, rp.Status, len(rp.Result))
+						if rp.Message == "OK" {
+							if len(rp.Result) > 0 {
+								bn, err := strconv.ParseInt(rp.Result[0].BlockNumber, 10, 64)
+								if err != nil {
+									log.Infof("parse %s to int got err: %v", rp.Result[0].BlockNumber, err)
+									bn = -1
+								}
+								for _, chatID := range chatIDs {
 									guard.lastActivity[lk] = bn + 1
 									if _, err := c.Do("SET", fmt.Sprintf("lastActivity:%d:%s", chatID, addr), rp.Result[0].BlockNumber); err != nil {
 										log.Infof("set lastActivity:%s got err:%v", addr, err)
@@ -275,7 +277,6 @@ func (guard *Guardian) Start() {
 									}
 								}
 							}
-							time.Sleep(50 * time.Millisecond)
 						}
 					}(addr, chatIDs)
 				}
