@@ -145,13 +145,12 @@ func (guard *Guardian) update() {
 			log.Infof("parseInt with arg: %s got err:%v", activities[i], err)
 			bn = 0
 		}
-		lastIdx := strings.LastIndex(keys[i], ":")
-		addr := keys[i][lastIdx+1:]
-		key := keys[i][13:] + "-" + addr
+		lastIdx := strings.LastIndex(activityKeys[i], ":")
+		addr := activityKeys[i][lastIdx+1:]
+		key := activityKeys[i][13:lastIdx] + "-" + addr
 		log.Infof("update key: %s with bn:%d", key, bn)
 		guard.lastActivity[key] = bn
 	}
-	guard.lock.Unlock()
 	log.Infof("udpate watched list:%v, and activityList:%v", guard.watched, guard.lastActivity)
 }
 
