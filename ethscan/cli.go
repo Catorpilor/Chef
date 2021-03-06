@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -74,6 +75,7 @@ func (c *Client) callWithURL(url string) (*Resp, error) {
 // QueryTokenTxWithValues get erc20 token tx with values
 func (c *Client) QueryTokenTxWithValues(addr, startBlock string) (*Resp, error) {
 	log.Infof("calling token tx with addr: %s and startBlock: %s\n", addr, startBlock)
+	time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
 	rawUrl := fmt.Sprintf(tokenTxURI, addr, c.apiKey)
 	if startBlock == "" {
 		// we use the patination api just retrive latest 20 txs
