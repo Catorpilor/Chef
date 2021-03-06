@@ -62,7 +62,7 @@ func main() {
 						msg.Text = "invalid arguments wanted two."
 						break
 					}
-					if err := watcher.Set(args[0], args[1]); err != nil {
+					if err := watcher.Set(args[0], args[1], update.Message.Chat.ID); err != nil {
 						msg.Text = err.Error()
 					}
 				case "add":
@@ -89,7 +89,7 @@ func main() {
 						msg.Text = "invalid arguments, only allowed one"
 						break
 					}
-					watcher.Delete(args[0])
+					watcher.Delete(args[0], update.Message.Chat.ID)
 					msg.Text = fmt.Sprintf("delete %s from the watch list", args[0])
 				default:
 					msg.Text = "not supported"
