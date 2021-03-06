@@ -26,20 +26,23 @@ var (
 )
 
 type Guardian struct {
-	bot          *tgbotapi.BotAPI
-	watched      map[string]int64
+	bot *tgbotapi.BotAPI
+	// watched is the local cache that key is the address, values are chatids.
+	watched map[string][]int64
+	// lastActivity store the address's latest block.
 	lastActivity map[string]int64
-	alias        map[string]string
-	ticker       *time.Ticker
-	ethCtl       *ethscan.Client
-	redisCtl     *redis.Pool
-	lock         sync.RWMutex
+	// alias store the alias for the address, key is "chatid-address"
+	alias    map[string]string
+	ticker   *time.Ticker
+	ethCtl   *ethscan.Client
+	redisCtl *redis.Pool
+	lock     sync.RWMutex
 }
 
 func New(bot *tgbotapi.BotAPI, ctl *ethscan.Client, redisCtl *redis.Pool, interval int) *Guardian {
 	guard := &Guardian{
 		bot:          bot,
-		watched:      make(map[string]int64),
+		watched:      make(map[string][]int64),
 		lastActivity: make(map[string]int64),
 		alias:        make(map[string]string),
 		ticker:       time.NewTicker(time.Duration(interval) * time.Second),
@@ -63,6 +66,19 @@ func (guard *Guardian) update() {
 	}
 	if count < 1 {
 		return
+	}
+	keys, err := redis.Strings(c.Do("KEYS", "user:*:watched"))
+	if err != nil {
+		log.Infof("get keys users:* failed with err:%s", err.Error())
+		return
+	}
+	for _, key := range keys {
+		addrs, err := redis.Strings(c.Do("SMEMBERS", key))
+		if err != nil {
+			log.Errorf("smembers %s failed %v", key, err)
+			continue
+		}
+
 	}
 	keys, err := redis.Strings(c.Do("KEYS", "ether:addr:*"))
 	if err != nil {
