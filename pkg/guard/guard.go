@@ -304,6 +304,11 @@ func constructWithTx(txs []ethscan.Tx, addr, alias string) string {
 		// create or selling
 		hl = strings.Repeat(":heart_decoration:", 5)
 	}
+	// TODO(catorpilor) better display
+	// for a tx hash user A use ETH to buy some token,
+	// we  get two txs
+	// for ETH we  it should shows "SELL"
+	// for other token it should shows "BUY"
 	var sb bytes.Buffer
 	sb.WriteString(fmt.Sprintf("%s addr: %s last (%d) txs:", hl, alias, len(txs)))
 	sb.WriteString("\n")
